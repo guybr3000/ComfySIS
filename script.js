@@ -175,12 +175,11 @@ function enableDragging(element, nodeId) {
   let offset = { x: 0, y: 0 };
 
   element.addEventListener("pointerdown", (event) => {
-    if (event.target.closest("button") || event.target.closest(".port")) return;
+    if (event.target.closest("button")) return;
     isDragging = true;
     offset.x = event.clientX - element.offsetLeft;
     offset.y = event.clientY - element.offsetTop;
     element.setPointerCapture(event.pointerId);
-    event.preventDefault();
   });
 
   element.addEventListener("pointermove", (event) => {
@@ -201,12 +200,7 @@ function updateNodePosition(id, x, y) {
   const node = nodes.find((n) => n.id === id);
   if (!node) return;
   node.position = { x, y };
-  const el = nodeLayer.querySelector(`.node[data-id="${id}"]`);
-  if (el) {
-    el.style.left = `${x}px`;
-    el.style.top = `${y}px`;
-  }
-  drawConnections();
+  renderNodes();
 }
 
 function isSource(node) {
