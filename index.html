@@ -1,0 +1,111 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>ComfySIS Studio</title>
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+  <header class="app-header">
+    <div class="brand">
+      <div class="logo">CS</div>
+      <div>
+        <p class="eyebrow">Data Integration Studio</p>
+        <h1>ComfySIS</h1>
+      </div>
+    </div>
+    <div class="header-actions">
+      <button class="ghost" id="toggle-grid">Toggle Grid</button>
+      <button class="primary" id="run-preview">Run Preview</button>
+    </div>
+  </header>
+
+  <main class="layout">
+    <aside class="panel palette">
+      <div class="panel-header">
+        <p class="eyebrow">Palette</p>
+        <h2>Components</h2>
+      </div>
+      <div class="palette-group" id="sources">
+        <div class="group-title">Sources</div>
+        <div class="chip-grid" id="source-list"></div>
+      </div>
+      <div class="palette-group" id="transforms">
+        <div class="group-title">Transforms</div>
+        <div class="chip-grid" id="transform-list"></div>
+      </div>
+      <div class="palette-group" id="destinations">
+        <div class="group-title">Destinations</div>
+        <div class="chip-grid" id="destination-list"></div>
+      </div>
+    </aside>
+
+    <section class="canvas-container">
+      <div class="canvas-toolbar">
+        <div>
+          <p class="eyebrow">Flow</p>
+          <h2>Design Surface</h2>
+        </div>
+        <div class="legend">
+          <span class="badge">Click a chip to drop a node</span>
+          <span class="badge">Drag nodes to rearrange</span>
+          <span class="badge">Connect output → input</span>
+        </div>
+      </div>
+      <div id="workspace" class="workspace show-grid">
+        <svg id="connection-layer" class="connections" aria-hidden="true">
+          <defs>
+            <linearGradient id="accent-gradient" x1="0%" x2="100%" y1="0%" y2="0%">
+              <stop offset="0%" stop-color="#7bdff2" />
+              <stop offset="100%" stop-color="#9d7dff" />
+            </linearGradient>
+          </defs>
+        </svg>
+        <div id="node-layer" class="nodes"></div>
+      </div>
+      <div class="log-panel">
+        <div class="panel-header">
+          <p class="eyebrow">Runs</p>
+          <h3>Preview Output</h3>
+        </div>
+        <div id="run-log" class="log-stream"></div>
+      </div>
+    </section>
+
+    <aside class="panel inspector">
+      <div class="panel-header">
+        <p class="eyebrow">Inspector</p>
+        <h2>Node Details</h2>
+      </div>
+      <div id="inspector-content" class="inspector-body">
+        <p class="muted">Select a node to view or edit its settings.</p>
+      </div>
+      <div class="panel-header">
+        <p class="eyebrow">Pipeline</p>
+        <h3>Connected Steps</h3>
+      </div>
+      <div id="pipeline-outline" class="outline"></div>
+    </aside>
+  </main>
+
+  <template id="node-template">
+    <div class="node">
+      <div class="node-header">
+        <div>
+          <p class="eyebrow node-type"></p>
+          <h4 class="node-title"></h4>
+        </div>
+        <button class="ghost node-delete" title="Delete node">✕</button>
+      </div>
+      <p class="node-description"></p>
+      <div class="ports">
+        <div class="port input" title="Input"></div>
+        <div class="port output" title="Output"></div>
+      </div>
+    </div>
+  </template>
+
+  <script type="module" src="script.js"></script>
+</body>
+</html>
