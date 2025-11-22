@@ -61,10 +61,6 @@ let connections = [];
 let selectedNodeId = null;
 let pendingConnection = null;
 let showGrid = true;
-let draggingNodeId = null;
-let dragFrame = null;
-let pendingPreviewPath = null;
-let pendingPreviewGlow = null;
 
 const sampleData = [
   { customer: "CloudCo", region: "West", amount: 850, status: "won" },
@@ -80,31 +76,6 @@ function init() {
   document.getElementById("toggle-grid").addEventListener("click", () => {
     showGrid = !showGrid;
     workspace.classList.toggle("show-grid", showGrid);
-  });
-
-  workspace.addEventListener("click", () => {
-    pendingConnection = null;
-    resetPortHighlights();
-    clearConnectionPreview();
-    selectNode(null);
-  });
-
-  workspace.addEventListener("pointermove", (event) => {
-    if (pendingConnection && !draggingNodeId) {
-      renderConnectionPreview(event);
-    }
-  });
-
-  workspace.addEventListener("pointerleave", () => {
-    clearConnectionPreview();
-  });
-
-  document.addEventListener("keydown", (event) => {
-    if (event.key === "Escape" && pendingConnection) {
-      pendingConnection = null;
-      resetPortHighlights();
-      clearConnectionPreview();
-    }
   });
 }
 
@@ -176,7 +147,6 @@ function renderNodes() {
       event.stopPropagation();
       pendingConnection = { from: node.id };
       highlightConnectableInputs();
-      renderConnectionPreview(event);
     });
 
     inputPort.addEventListener("click", (event) => {
@@ -185,7 +155,6 @@ function renderNodes() {
         createConnection(pendingConnection.from, node.id);
         pendingConnection = null;
         resetPortHighlights();
-        clearConnectionPreview();
       }
     });
 
@@ -206,38 +175,24 @@ function enableDragging(element, nodeId) {
   let offset = { x: 0, y: 0 };
 
   element.addEventListener("pointerdown", (event) => {
-    if (event.target.closest("button") || event.target.closest(".port")) return;
+    if (event.target.closest("button")) return;
     isDragging = true;
     offset.x = event.clientX - element.offsetLeft;
     offset.y = event.clientY - element.offsetTop;
     element.setPointerCapture(event.pointerId);
-    draggingNodeId = nodeId;
-    event.preventDefault();
   });
 
   element.addEventListener("pointermove", (event) => {
     if (!isDragging) return;
     const x = event.clientX - offset.x;
     const y = event.clientY - offset.y;
-
-    if (!dragFrame) {
-      dragFrame = requestAnimationFrame(() => {
-        updateNodePosition(nodeId, x, y);
-        dragFrame = null;
-      });
-    }
+    updateNodePosition(nodeId, x, y);
   });
 
   element.addEventListener("pointerup", (event) => {
     if (!isDragging) return;
     isDragging = false;
     element.releasePointerCapture(event.pointerId);
-    draggingNodeId = null;
-    if (dragFrame) {
-      cancelAnimationFrame(dragFrame);
-      dragFrame = null;
-      updateNodePosition(nodeId, event.clientX - offset.x, event.clientY - offset.y);
-    }
   });
 }
 
@@ -245,12 +200,7 @@ function updateNodePosition(id, x, y) {
   const node = nodes.find((n) => n.id === id);
   if (!node) return;
   node.position = { x, y };
-  const el = nodeLayer.querySelector(`.node[data-id="${id}"]`);
-  if (el) {
-    el.style.left = `${x}px`;
-    el.style.top = `${y}px`;
-  }
-  drawConnections();
+  renderNodes();
 }
 
 function isSource(node) {
@@ -348,53 +298,6 @@ function drawConnections() {
     connectionLayer.appendChild(glow);
     connectionLayer.appendChild(path);
   });
-
-  if (pendingPreviewPath && pendingPreviewGlow) {
-    connectionLayer.appendChild(pendingPreviewGlow);
-    connectionLayer.appendChild(pendingPreviewPath);
-  }
-}
-
-function clearConnectionPreview() {
-  pendingPreviewGlow = null;
-  pendingPreviewPath = null;
-  drawConnections();
-}
-
-function renderConnectionPreview(event) {
-  const fromNode = nodeLayer.querySelector(`.node[data-id="${pendingConnection?.from}"]`);
-  if (!fromNode) return;
-
-  const fromPort = fromNode.querySelector(".port.output").getBoundingClientRect();
-  const svgRect = connectionLayer.getBoundingClientRect();
-  const startX = fromPort.left - svgRect.left + fromPort.width / 2;
-  const startY = fromPort.top - svgRect.top + fromPort.height / 2;
-  const endX = event.clientX - svgRect.left;
-  const endY = event.clientY - svgRect.top;
-  const controlOffset = Math.abs(endX - startX) * 0.45 + 40;
-
-  pendingPreviewPath = document.createElementNS("http://www.w3.org/2000/svg", "path");
-  pendingPreviewPath.setAttribute(
-    "d",
-    `M ${startX} ${startY} C ${startX + controlOffset} ${startY} ${endX - controlOffset} ${endY} ${endX} ${endY}`
-  );
-  pendingPreviewPath.setAttribute("fill", "none");
-  pendingPreviewPath.setAttribute("stroke", "url(#accent-gradient)");
-  pendingPreviewPath.setAttribute("stroke-width", "2.5");
-  pendingPreviewPath.setAttribute("stroke-dasharray", "6 6");
-  pendingPreviewPath.setAttribute("opacity", "0.8");
-  pendingPreviewPath.classList.add("connection-preview");
-
-  pendingPreviewGlow = document.createElementNS("http://www.w3.org/2000/svg", "path");
-  pendingPreviewGlow.setAttribute(
-    "d",
-    `M ${startX} ${startY} C ${startX + controlOffset} ${startY} ${endX - controlOffset} ${endY} ${endX} ${endY}`
-  );
-  pendingPreviewGlow.setAttribute("fill", "none");
-  pendingPreviewGlow.setAttribute("stroke", "rgba(125,223,242,0.18)");
-  pendingPreviewGlow.setAttribute("stroke-width", "9");
-
-  drawConnections();
 }
 
 function renderInspector() {
@@ -569,4 +472,9 @@ function appendLog(message) {
   runLog.scrollTop = runLog.scrollHeight;
 }
 
-document.addEventListener("DOMContentLoaded", init);
+workspace.addEventListener("click", () => {
+  pendingConnection = null;
+  resetPortHighlights();
+});
+
+init();

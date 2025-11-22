@@ -279,8 +279,6 @@ button:hover {
   border: 1px solid var(--accent);
   box-shadow: 0 0 0 3px rgba(125, 223, 242, 0.12);
   position: relative;
-  cursor: crosshair;
-  transition: box-shadow 0.15s ease, transform 0.15s ease;
 }
 
 .port.output {
@@ -378,11 +376,6 @@ button:hover {
 
 .port.connectable {
   box-shadow: 0 0 0 4px rgba(125, 223, 242, 0.35);
-  transform: scale(1.05);
-}
-
-.connections path.connection-preview {
-  stroke-linecap: round;
 }
 
 .outline {
