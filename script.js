@@ -55,25 +55,12 @@ const connectionLayer = document.getElementById("connection-layer");
 const inspectorContent = document.getElementById("inspector-content");
 const runLog = document.getElementById("run-log");
 const pipelineOutline = document.getElementById("pipeline-outline");
-const scene = document.getElementById("scene");
-const zoomLevelEl = document.getElementById("zoom-level");
-const zoomInBtn = document.getElementById("zoom-in");
-const zoomOutBtn = document.getElementById("zoom-out");
-const zoomResetBtn = document.getElementById("zoom-reset");
 
 let nodes = [];
 let connections = [];
 let selectedNodeId = null;
 let pendingConnection = null;
 let showGrid = true;
-let draggingNodeId = null;
-let dragFrame = null;
-let drawFrame = null;
-let pendingPreviewPath = null;
-let pendingPreviewGlow = null;
-let isPanning = false;
-let panStart = { x: 0, y: 0 };
-const viewport = { x: 0, y: 0, scale: 1 };
 
 const sampleData = [
   { customer: "CloudCo", region: "West", amount: 850, status: "won" },
@@ -89,71 +76,6 @@ function init() {
   document.getElementById("toggle-grid").addEventListener("click", () => {
     showGrid = !showGrid;
     workspace.classList.toggle("show-grid", showGrid);
-  });
-
-  zoomInBtn.addEventListener("click", () => adjustZoom(1.12));
-  zoomOutBtn.addEventListener("click", () => adjustZoom(1 / 1.12));
-  zoomResetBtn.addEventListener("click", resetView);
-
-  workspace.addEventListener("wheel", (event) => {
-    if (!event.ctrlKey && !event.metaKey) return;
-    event.preventDefault();
-    const factor = event.deltaY < 0 ? 1.12 : 1 / 1.12;
-    adjustZoom(factor, event);
-  });
-
-  workspace.addEventListener("pointerdown", (event) => {
-    const isNodeTarget = event.target.closest?.(".node");
-    const isPortTarget = event.target.closest?.(".port");
-    if (isNodeTarget || isPortTarget) return;
-    isPanning = true;
-    const point = toWorld(event.clientX, event.clientY);
-    panStart = {
-      x: event.clientX - viewport.x,
-      y: event.clientY - viewport.y,
-      worldX: point.x,
-      worldY: point.y,
-    };
-    workspace.setPointerCapture(event.pointerId);
-  });
-
-  workspace.addEventListener("pointermove", (event) => {
-    if (!isPanning) return;
-    viewport.x = event.clientX - panStart.x;
-    viewport.y = event.clientY - panStart.y;
-    applyViewportTransform();
-  });
-
-  workspace.addEventListener("pointerup", (event) => {
-    if (!isPanning) return;
-    isPanning = false;
-    workspace.releasePointerCapture(event.pointerId);
-  });
-
-  workspace.addEventListener("click", (event) => {
-    if (isPanning || !(event.target === workspace || event.target === scene)) return;
-    pendingConnection = null;
-    resetPortHighlights();
-    clearConnectionPreview();
-    selectNode(null);
-  });
-
-  workspace.addEventListener("pointermove", (event) => {
-    if (pendingConnection && !draggingNodeId && !isPanning) {
-      renderConnectionPreview(event);
-    }
-  });
-
-  workspace.addEventListener("pointerleave", () => {
-    clearConnectionPreview();
-  });
-
-  document.addEventListener("keydown", (event) => {
-    if (event.key === "Escape" && pendingConnection) {
-      pendingConnection = null;
-      resetPortHighlights();
-      clearConnectionPreview();
-    }
   });
 }
 
@@ -173,48 +95,6 @@ function renderPalette() {
   paletteSections.sources.forEach((item) => addChip(sourceList, item));
   paletteSections.transforms.forEach((item) => addChip(transformList, item));
   paletteSections.destinations.forEach((item) => addChip(destinationList, item));
-
-  applyViewportTransform();
-}
-
-function toWorld(clientX, clientY) {
-  const rect = workspace.getBoundingClientRect();
-  return {
-    x: (clientX - rect.left - viewport.x) / viewport.scale,
-    y: (clientY - rect.top - viewport.y) / viewport.scale,
-  };
-}
-
-function applyViewportTransform() {
-  scene.style.transform = `translate(${viewport.x}px, ${viewport.y}px) scale(${viewport.scale})`;
-  zoomLevelEl.textContent = `${Math.round(viewport.scale * 100)}%`;
-  workspace.style.setProperty("--grid-offset-x", `${viewport.x}px`);
-  workspace.style.setProperty("--grid-offset-y", `${viewport.y}px`);
-  workspace.style.setProperty("--grid-scale", viewport.scale.toFixed(2));
-  scheduleDrawConnections();
-}
-
-function adjustZoom(factor, event) {
-  const rect = workspace.getBoundingClientRect();
-  const pointerX = event ? event.clientX - rect.left : rect.width / 2;
-  const pointerY = event ? event.clientY - rect.top : rect.height / 2;
-  const world = {
-    x: (pointerX - viewport.x) / viewport.scale,
-    y: (pointerY - viewport.y) / viewport.scale,
-  };
-
-  const nextScale = Math.min(2.5, Math.max(0.5, viewport.scale * factor));
-  viewport.scale = nextScale;
-  viewport.x = pointerX - world.x * viewport.scale;
-  viewport.y = pointerY - world.y * viewport.scale;
-  applyViewportTransform();
-}
-
-function resetView() {
-  viewport.x = 0;
-  viewport.y = 0;
-  viewport.scale = 1;
-  applyViewportTransform();
 }
 
 function addNode(definition) {
@@ -267,7 +147,6 @@ function renderNodes() {
       event.stopPropagation();
       pendingConnection = { from: node.id };
       highlightConnectableInputs();
-      renderConnectionPreview(event);
     });
 
     inputPort.addEventListener("click", (event) => {
@@ -276,7 +155,6 @@ function renderNodes() {
         createConnection(pendingConnection.from, node.id);
         pendingConnection = null;
         resetPortHighlights();
-        clearConnectionPreview();
       }
     });
 
@@ -288,7 +166,7 @@ function renderNodes() {
     nodeLayer.appendChild(fragment);
   });
 
-  scheduleDrawConnections();
+  drawConnections();
   renderPipelineOutline();
 }
 
@@ -297,41 +175,24 @@ function enableDragging(element, nodeId) {
   let offset = { x: 0, y: 0 };
 
   element.addEventListener("pointerdown", (event) => {
-    if (event.target.closest("button") || event.target.closest(".port")) return;
+    if (event.target.closest("button")) return;
     isDragging = true;
-    const worldPoint = toWorld(event.clientX, event.clientY);
-    offset.x = worldPoint.x - node.position.x;
-    offset.y = worldPoint.y - node.position.y;
+    offset.x = event.clientX - element.offsetLeft;
+    offset.y = event.clientY - element.offsetTop;
     element.setPointerCapture(event.pointerId);
-    draggingNodeId = nodeId;
-    event.preventDefault();
   });
 
   element.addEventListener("pointermove", (event) => {
     if (!isDragging) return;
-    const worldPoint = toWorld(event.clientX, event.clientY);
-    const x = worldPoint.x - offset.x;
-    const y = worldPoint.y - offset.y;
-
-    if (!dragFrame) {
-      dragFrame = requestAnimationFrame(() => {
-        updateNodePosition(nodeId, x, y);
-        dragFrame = null;
-      });
-    }
+    const x = event.clientX - offset.x;
+    const y = event.clientY - offset.y;
+    updateNodePosition(nodeId, x, y);
   });
 
   element.addEventListener("pointerup", (event) => {
     if (!isDragging) return;
     isDragging = false;
     element.releasePointerCapture(event.pointerId);
-    draggingNodeId = null;
-    if (dragFrame) {
-      cancelAnimationFrame(dragFrame);
-      dragFrame = null;
-      const worldPoint = toWorld(event.clientX, event.clientY);
-      updateNodePosition(nodeId, worldPoint.x - offset.x, worldPoint.y - offset.y);
-    }
   });
 }
 
@@ -339,12 +200,7 @@ function updateNodePosition(id, x, y) {
   const node = nodes.find((n) => n.id === id);
   if (!node) return;
   node.position = { x, y };
-  const el = nodeLayer.querySelector(`.node[data-id="${id}"]`);
-  if (el) {
-    el.style.left = `${x}px`;
-    el.style.top = `${y}px`;
-  }
-  scheduleDrawConnections();
+  renderNodes();
 }
 
 function isSource(node) {
@@ -400,7 +256,6 @@ function highlightConnectableInputs() {
 }
 
 function drawConnections() {
-  drawFrame = null;
   connectionLayer.innerHTML = "";
   const svgRect = connectionLayer.getBoundingClientRect();
 
@@ -443,58 +298,6 @@ function drawConnections() {
     connectionLayer.appendChild(glow);
     connectionLayer.appendChild(path);
   });
-
-  if (pendingPreviewPath && pendingPreviewGlow) {
-    connectionLayer.appendChild(pendingPreviewGlow);
-    connectionLayer.appendChild(pendingPreviewPath);
-  }
-}
-
-function scheduleDrawConnections() {
-  if (drawFrame) return;
-  drawFrame = requestAnimationFrame(drawConnections);
-}
-
-function clearConnectionPreview() {
-  pendingPreviewGlow = null;
-  pendingPreviewPath = null;
-  drawConnections();
-}
-
-function renderConnectionPreview(event) {
-  const fromNode = nodeLayer.querySelector(`.node[data-id="${pendingConnection?.from}"]`);
-  if (!fromNode) return;
-
-  const fromPort = fromNode.querySelector(".port.output").getBoundingClientRect();
-  const svgRect = connectionLayer.getBoundingClientRect();
-  const startX = fromPort.left - svgRect.left + fromPort.width / 2;
-  const startY = fromPort.top - svgRect.top + fromPort.height / 2;
-  const endX = event.clientX - svgRect.left;
-  const endY = event.clientY - svgRect.top;
-  const controlOffset = Math.abs(endX - startX) * 0.45 + 40;
-
-  pendingPreviewPath = document.createElementNS("http://www.w3.org/2000/svg", "path");
-  pendingPreviewPath.setAttribute(
-    "d",
-    `M ${startX} ${startY} C ${startX + controlOffset} ${startY} ${endX - controlOffset} ${endY} ${endX} ${endY}`
-  );
-  pendingPreviewPath.setAttribute("fill", "none");
-  pendingPreviewPath.setAttribute("stroke", "url(#accent-gradient)");
-  pendingPreviewPath.setAttribute("stroke-width", "2.5");
-  pendingPreviewPath.setAttribute("stroke-dasharray", "6 6");
-  pendingPreviewPath.setAttribute("opacity", "0.8");
-  pendingPreviewPath.classList.add("connection-preview");
-
-  pendingPreviewGlow = document.createElementNS("http://www.w3.org/2000/svg", "path");
-  pendingPreviewGlow.setAttribute(
-    "d",
-    `M ${startX} ${startY} C ${startX + controlOffset} ${startY} ${endX - controlOffset} ${endY} ${endX} ${endY}`
-  );
-  pendingPreviewGlow.setAttribute("fill", "none");
-  pendingPreviewGlow.setAttribute("stroke", "rgba(125,223,242,0.18)");
-  pendingPreviewGlow.setAttribute("stroke-width", "9");
-
-  drawConnections();
 }
 
 function renderInspector() {
@@ -669,4 +472,9 @@ function appendLog(message) {
   runLog.scrollTop = runLog.scrollHeight;
 }
 
-document.addEventListener("DOMContentLoaded", init);
+workspace.addEventListener("click", () => {
+  pendingConnection = null;
+  resetPortHighlights();
+});
+
+init();

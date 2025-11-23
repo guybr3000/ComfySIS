@@ -53,27 +53,16 @@
           <span class="badge">Connect output → input</span>
         </div>
       </div>
-      <div class="canvas-actions">
-        <div class="zoom-readout" id="zoom-level">100%</div>
-        <div class="zoom-controls">
-          <button class="ghost" id="zoom-out" title="Zoom out">−</button>
-          <button class="ghost" id="zoom-reset" title="Reset view">Reset</button>
-          <button class="ghost" id="zoom-in" title="Zoom in">+</button>
-        </div>
-      </div>
-
       <div id="workspace" class="workspace show-grid">
-        <div id="scene" class="scene">
-          <svg id="connection-layer" class="connections" aria-hidden="true">
-            <defs>
-              <linearGradient id="accent-gradient" x1="0%" x2="100%" y1="0%" y2="0%">
-                <stop offset="0%" stop-color="#7bdff2" />
-                <stop offset="100%" stop-color="#9d7dff" />
-              </linearGradient>
-            </defs>
-          </svg>
-          <div id="node-layer" class="nodes"></div>
-        </div>
+        <svg id="connection-layer" class="connections" aria-hidden="true">
+          <defs>
+            <linearGradient id="accent-gradient" x1="0%" x2="100%" y1="0%" y2="0%">
+              <stop offset="0%" stop-color="#7bdff2" />
+              <stop offset="100%" stop-color="#9d7dff" />
+            </linearGradient>
+          </defs>
+        </svg>
+        <div id="node-layer" class="nodes"></div>
       </div>
       <div class="log-panel">
         <div class="panel-header">

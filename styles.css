@@ -11,9 +11,6 @@
   --radius: 14px;
   --shadow: 0 10px 40px rgba(0, 0, 0, 0.4);
   --grid-size: 24px;
-  --grid-scale: 1;
-  --grid-offset-x: 0px;
-  --grid-offset-y: 0px;
   --font: "Inter", system-ui, -apple-system, sans-serif;
 }
 
@@ -208,33 +205,22 @@ button:hover {
   border-radius: var(--radius);
   min-height: 520px;
   overflow: hidden;
-  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.02), 0 25px 60px rgba(0, 0, 0, 0.45);
-  isolation: isolate;
 }
 
 .workspace.show-grid::before {
   content: "";
   position: absolute;
   inset: 0;
-  background-size: calc(var(--grid-size) * var(--grid-scale))
-    calc(var(--grid-size) * var(--grid-scale));
+  background-size: var(--grid-size) var(--grid-size);
   background-image: linear-gradient(to right, rgba(255, 255, 255, 0.03) 1px, transparent 1px),
     linear-gradient(to bottom, rgba(255, 255, 255, 0.03) 1px, transparent 1px);
-  background-position: var(--grid-offset-x) var(--grid-offset-y);
   pointer-events: none;
-}
-
-.scene {
-  position: absolute;
-  inset: 0;
-  transform-origin: top left;
 }
 
 .nodes {
   position: relative;
   width: 100%;
   height: 100%;
-  transform-origin: top left;
 }
 
 .connections {
@@ -243,33 +229,6 @@ button:hover {
   width: 100%;
   height: 100%;
   pointer-events: none;
-}
-
-.canvas-actions {
-  display: flex;
-  justify-content: flex-end;
-  align-items: center;
-  gap: 8px;
-  margin-bottom: 6px;
-}
-
-.zoom-controls {
-  display: inline-flex;
-  gap: 6px;
-  background: rgba(19, 24, 36, 0.85);
-  border: 1px solid var(--border);
-  padding: 4px;
-  border-radius: 999px;
-  box-shadow: var(--shadow);
-}
-
-.zoom-readout {
-  background: linear-gradient(135deg, rgba(125, 223, 242, 0.18), rgba(157, 125, 255, 0.2));
-  border: 1px solid rgba(125, 223, 242, 0.3);
-  padding: 8px 12px;
-  border-radius: 12px;
-  font-weight: 700;
-  color: var(--text);
 }
 
 .node {
@@ -320,8 +279,6 @@ button:hover {
   border: 1px solid var(--accent);
   box-shadow: 0 0 0 3px rgba(125, 223, 242, 0.12);
   position: relative;
-  cursor: crosshair;
-  transition: box-shadow 0.15s ease, transform 0.15s ease;
 }
 
 .port.output {
@@ -419,11 +376,6 @@ button:hover {
 
 .port.connectable {
   box-shadow: 0 0 0 4px rgba(125, 223, 242, 0.35);
-  transform: scale(1.05);
-}
-
-.connections path.connection-preview {
-  stroke-linecap: round;
 }
 
 .outline {
